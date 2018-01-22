@@ -1,1 +1,1 @@
-# Online Shoping Database
+# Online Shopping Database
