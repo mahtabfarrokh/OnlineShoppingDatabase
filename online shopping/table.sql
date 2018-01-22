@@ -34,7 +34,7 @@ drop table if exists DeletedCompany;
 drop procedure if exists hesab;
 drop procedure if exists avgStar;
 create table Employee(IDU varchar(30) references UserAccount on update cascade,companyName text references Company,Pnumber int,Confirmation VARCHAR (10),CHECK (Confirmation in (’yes’, ’no’)) , PRIMARY KEY (IDU));
-create table UserAccount(IDU varchar(30) primary key,Email text references Users,credit int DEFAULT 0 , uDATE date , password text );
+create table UserAccount(IDU varchar(30) primary key on delete CASCADE ,Email text references Users,credit int DEFAULT 0 , uDATE date , password text );
 create table UserAccountPhone(UPhonenumber numeric (11,0),IDU varchar(30) references UserAccount on update cascade,PRIMARY KEY (UPhonenumber, IDU)  );
 create table UserAccountAddress(UAddress varchar(100),IDU varchar(30) references UserAccount on update cascade ,PRIMARY KEY (UAddress, IDU) );
 create table Users(Email varchar(30) primary key , UfirstName text,UlastName text , kind varchar (10) , check (kind in (’guest’, ’account’)));
@@ -62,19 +62,63 @@ create table Conversation(Email varchar(30)  references Users on delete cascade 
 create table Pay(IDB int  references Basket on delete restrict,Email varchar(30)  references Users,dest text,Ptime time,Pdate date,Pkind text,PRIMARY KEY (IDB,Email),check (Pkind in ('etebar', 'internety', 'sherkat')));
 create table Deliver(numberIdentification int  references Driver on delete no action, IDB int  references Basket,PRIMARY KEY (IDB,numberIdentification));
 create table Specify(IDC int references Connector,coRegisterationNumber int references Company,PRIMARY KEY (IDC,coRegisterationNumber) );
-create table Prizes ( IDU varchar(30) REFERENCES UserAccount on update cascade,time timestamp,primary key(IDU,time) );
+create table Prizes ( IDU varchar(30) REFERENCES UserAccount on update cascade,time timestamp,numbers int,primary key(IDU,time) );
 create table DeletedCompany(coRegisterationNumber int primary key , companyName text);
+create table changeIDU(newIDU varchar(30) ,  oldIDU varchar(30) , time timestamp , PRIMARY KEY (newIDU , oldIDU));
+CREATE PROCEDURE comp (in coRegisterationNumbers int)
+BEGIN
+DECLARE con int DEFAULT 0 ;
+select count(IDC) into con
+from Company natural join Connector
+where coRegisterationNumber=coRegisterationNumbers;
+if con=0 then
+SIGNAL SQLSTATE '45000'
+     SET MESSAGE_TEXT = 'no one is set as a connector add one plz!';
+     end if;
+END;
+CREATE TRIGGER inCredits BEFORE update ON UserAccount
+     FOR EACH ROW
+     BEGIN
+         IF NEW.credit>1000 THEN
+            SET NEW.credit = old.credit+new.credit+10*(NEW.credit/1000);
+            INSERT INTO Prizes ( IDU ,time,numbers)
+   VALUES
+   ( new.IDU,SYSDate(),NEW.credit/1000);
+        ELSEIF NEW.credit < 1000 THEN
+             SET NEW.credit =  old.credit+new.credit;
+         END IF;
+END;
 CREATE TRIGGER deletedAccounts After delete ON UserAccount
        FOR EACH ROW
    INSERT INTO  DeletedUsers(IDU  , email)
    VALUES
    ( old.IDU ,old.email);
-CREATE TRIGGER up_support After UPDATE ON Supporter
+CREATE TRIGGER up_support After update ON Supporter
        FOR EACH ROW
    INSERT INTO  SupporterLog(IDS ,onlinestatus,times)
    VALUES
    ( new.IDS,new.onlinestatus,SYSDate());
-CREATE TRIGGER up_driver After UPDATE ON Driver
+CREATE PROCEDURE setIDU( inout NIDU varchar(30) , in NEmail text , in OIDU VARCHAR (30))
+BEGIN
+DECLARE temp INT DEFAULT 0 ;
+ SELECT COUNT(*) into temp
+ FROM  UserAccount
+ WHERE  UserAccount.IDU = NIDU and UserAccount.Email != NEmail;
+  IF temp != 0 THEN
+    set NIDU = OIDU ;
+    SIGNAL SQLSTATE '45000'
+     SET MESSAGE_TEXT = 'there is someone with this userID. please pick something else!';
+  END IF ;
+  IF temp = 0 and NIDU != OIDU THEN
+    INSERT INTO  changeIDU(newIDU ,  oldIDU  , time )
+   VALUES
+   ( NIDU,OIDU,SYSDate());
+  END IF ;
+END ;
+CREATE TRIGGER up_USERACCOUNT Before update ON UserAccount
+  FOR EACH ROW
+  call setIDU(new.IDU , new.Email , old.IDU);
+CREATE TRIGGER up_driver After update ON Driver
        FOR EACH ROW
    INSERT INTO  DriverLog(numberIdentification ,plaque,machine,Dstate,times )
    VALUES
@@ -99,30 +143,18 @@ CREATE TRIGGER delcompany After delete on Company
 CREATE TRIGGER CostPlusMaliat After insert ON Basket_Product
        FOR EACH ROW
 		call hesab(new.IDB);
-CREATE TRIGGER incCredit BEFORE UPDATE ON UserAccount
-     FOR EACH ROW
-     BEGIN
-         IF NEW.credit>1000 THEN
-            SET NEW.credit = old.credit+new.credit+10;
-            INSERT INTO Prizes ( IDU ,time)
-   VALUES
-   ( new.IDU,SYSDate());
-        ELSEIF NEW.credit < 1000 THEN
-             SET NEW.credit =  old.credit+new.credit;
-         END IF;
-END;
 CREATE PROCEDURE payEmployee (IN  IDBA int , IN mail varchar(30))
 BEGIN
 DECLARE emp INT DEFAULT 0 ;
   SELECT COUNT(*) into emp
   FROM Employee , UserAccount
-  WHERE Employee.IDU = UserAccount.IDU and UserAccount.Email = mail ;
+  WHERE Employee.IDU = UserAccount.IDU and UserAccount.Email = mail and Employee.Confirmation = 'yes';
   update Basket SET totalCost =( totalCost * 0.9 )  WHERE  IDB=IDBA and totalCost <= 500 and emp >= 1;
   update Basket SET totalCost =(totalCost - 50 ) WHERE  IDB=IDBA and totalCost > 500 and emp >= 1;
 END;
 CREATE TRIGGER empdiscount BEFORE insert on Pay
   FOR EACH ROW
-  call payEmployee(new.IDB , new.Email)
+  call payEmployee(new.IDB , new.Email);
 UPDATE UserAccount SET credit =1001
 WHERE IDu='samii';
 CREATE PROCEDURE avgStar( in IDps int , out  stars int )
@@ -140,6 +172,25 @@ END ;
    update Products set numberExist=numberExist+1 where IDP=new.IDP;
          END IF;
 END;
+CREATE TRIGGER payBasket after insert ON Pay
+     FOR EACH ROW
+   call  incCredit (new.IDB, new.Pkind);
+CREATE PROCEDURE incCredit( in IDBs int  ,in Pkinds text)
+BEGIN
+DECLARE total INT DEFAULT 0 ;
+DECLARE totall  varchar(30) ;
+update Basket SET state='p'
+WHERE IDB=IDbs;
+if Pkinds='etebar' then
+SELECT totalCost into total
+FROM  Basket
+WHERE  IDB=IDBs  ;
+SELECT IDu into totall
+FROM  Basket natural join User_Basket natural join UserAccount
+WHERE  IDB=IDBs  ;
+update UserAccount SET credit=credit-total WHERE  IDU =totall;
+end If;
+END ;
 insert into Users VALUES ('shahrzad@gmail.com' , 'shahrzad', 'shirazi', 'account');
 insert into Users VALUES ('sara@gmail.com' , 'sara', 'shirazi', 'account');
 insert into Users VALUES ('sarass@gmail.com' , 'saras', 'shirazi', 'account');
@@ -222,6 +273,6 @@ insert into Basket_Product value (10009,1,'2013-06-12 04:17:42', 'add');
 insert into Basket_Product value (10009,2,'2013-06-12 04:17:44', 'add');
 insert into Basket_Product value (33,2,'2013-06-12 04:17:44', 'add');
 insert into Basket_Product value (33,2,'2013-06-12 04:17:55', 'delete');
-UPDATE Supporter  SET onlinestatus ='v'
-WHERE ids=1;
-DELETE FROM useraccount WHERE IDU='sam';
+UPDATE Supporter  SET onlinestatus ='v' WHERE ids=1;
+DELETE FROM UserAccount WHERE IDU='sam';
+UPDATE UserAccount SET IDU = 'admin' WHERE Email = 'samii@gmail.com' ;

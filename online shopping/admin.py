@@ -9,7 +9,7 @@ class Admin :
         self.now = datetime.datetime.now()
         # self.makeQueryList()
         self.root = root
-        self.root = Tk()
+        # self.root = Tk()
         self.root.configure(background='white')
 
         self.guiMake()
@@ -18,11 +18,11 @@ class Admin :
     def queryList(self, number, name):
         self.date = str(self.now.year) + "-" + str(self.now.month) + "-" + str(self.now.day)
 
-        if number == 1:     # TODO
-            return "select sum(cost) as totalCost, products.kind as kind , count(IDB) as number " +\
-                    "from (products  join  basket_product using( IDP)) natural join basket " +\
-                    "where state='d'and basket_product.kind= 'add' " +\
-                    "group by products.kind; "
+        if number == 1:
+            return "select sum(cost) as totalCost, Products.kind as kind , count(IDB) as number " +\
+                    "from (Products  join  Basket_Product using( IDP)) natural join Basket " +\
+                    "where state='d'and Basket_Product.kind= 'add' " +\
+                    "group by Products.kind ; "
 
         elif number == 2:
             return "SELECT  UfirstName,UlastName,uDATE " +\
@@ -66,9 +66,9 @@ class Admin :
                    "FROm Products " +\
                    " where discount>0 ;"
 
-        elif number == 11:  # TODO
-            return "SELECT  IDS , time s" +\
-                   "FROM  supporterlog " +\
+        elif number == 11:
+            return "SELECT  IDS , times " +\
+                   "FROM  SupporterLog " +\
                    "where onlinestatus='o'; "
 
         elif number == 12:
@@ -83,9 +83,9 @@ class Admin :
                    "DATE_SUB(Pay.Pdate, INTERVAL -1 MONTH) < " + self.date + " ;"
 
         elif number == 14:
-            return "select IDU , COUNT(time) * 10 " +\
+            return "select IDU , sum(numbers) * 10 " +\
                    "from Prizes " +\
-                   "group by IDU ; "
+                   "group by IDU ;  "
 
         elif number == 15:
             return "select Users.UfirstName , Users.UlastName , Users.kind " +\
@@ -114,7 +114,24 @@ class Admin :
                     "from Employee , UserAccount , Users ,User_Basket , Basket , Pay " +\
                     "where Employee.companyName = '" + name + "' and Employee.IDU = UserAccount.IDU and UserAccount.Email = Users.Email and " +\
                     "User_Basket.Email = Users.Email and User_Basket.IDB = Basket.IDB  and  Basket.IDB = Pay.IDB ; "
+        elif number == 20:
+            return "update UserAccount set IDU = '" + name[0] + "' where Email = '" + name[1] + "' ;"
 
+        elif number == 21:
+            return "select create_time " +\
+                    "FROM INFORMATION_SCHEMA.TABLES " +\
+                    "WHERE table_schema = 'onlineShopping' " +\
+                    "AND table_name = '" + name + "' ;"
+
+        elif number == 22:
+            return "SELECT UPDATE_TIME " +\
+                    "FROM   information_schema.tables " +\
+                    "WHERE  TABLE_SCHEMA = 'onlineShopping' "\
+                    "AND TABLE_NAME = '"+ name + "';"
+
+        elif number == 23:
+            return "select * " +\
+                    "from changeIDU ;"
 
     def print_Query_Result (self , table):
 
@@ -151,6 +168,9 @@ class Admin :
         elif len(r) == 3:
             number = int(r[0])
             name = r[2]
+        elif len(r) == 4:
+            number = int(r[0])
+            name = [r[2], r[3]]
         sql = self.queryList(number, name)
         print(sql)
         self.connection = pymysql.connect(host='localhost',
@@ -173,7 +193,10 @@ class Admin :
                 x = []
                 if result is None:
                     self.scrolltext.clipboard_clear()
-                    self.scrolltext.insert(INSERT, "\n Empty table")
+                    if number != 20 :
+                        self.scrolltext.insert(INSERT, "\n Empty table")
+                    else:
+                        self.scrolltext.insert(INSERT, "\n Your User ID Changed :)")
                 else:
                     for attribute in result.keys():
                         x.append(attribute)
@@ -186,6 +209,11 @@ class Admin :
                         result = cursor.fetchone()
                     print(table)
                     self.print_Query_Result(table)
+        except pymysql.err.InternalError as e:
+            code, msg = e.args
+            if code == 1644:
+                self.scrolltext.clipboard_clear()
+                self.scrolltext.insert(INSERT, "\n " + msg)
         finally:
             self.connection.commit()
             self.connection.close()
@@ -256,6 +284,22 @@ class Admin :
                          background='white', fg='#034752')
         self.l39.grid(row=2, column=2, sticky=W)
 
+        self.l40 = Label(text="20) change the user ID (new ID & Email)", height=2, font=17,
+                         background='white', fg='#034752')
+        self.l40.grid(row=3, column=2, sticky=W)
+
+        self.l41 = Label(text="21) Get the time of Creation all Tables", height=2, font=17,
+                         background='white', fg='#034752')
+        self.l41.grid(row=4, column=2, sticky=W)
+
+        self.l42 = Label(text="22) get last time tables updated", height=2, font=17,
+                         background='white', fg='#034752')
+        self.l42.grid(row=5, column=2, sticky=W)
+
+        self.l43 = Label(text="23) log of user ID changed", height=2, font=17,
+                         background='white', fg='#034752')
+        self.l43.grid(row=6, column=2, sticky=W)
+
 
         self.e20 = Entry(bd=3, width=17, font=10)
         self.e20.grid(row= 1, column=1, sticky=W)
@@ -267,6 +311,6 @@ class Admin :
         self.scrolltext = ScrolledText(font=10, width=140, height=20)
         self.scrolltext.grid(row=11, column=0,columnspan=4, rowspan=3 , sticky=W)
 
-r = ""
-a = Admin(r)
+# r = ""
+# a = Admin(r)
 

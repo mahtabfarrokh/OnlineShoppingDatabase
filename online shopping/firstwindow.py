@@ -104,9 +104,9 @@ class Gui :
         self.address = self.e7.get()
         self.username = self.e8.get()
         self.password = self.e9.get()
-        self.email = self.e10.get()
+        self.Email = self.e10.get()
         if self.firstName == "" or self.lastName == "" or self.phone == "" or self.address == "" or self.username == ""\
-                or self.password == "" or self.email == "" :
+                or self.password == "" or self.Email == "" :
             self.l11 = Label(text="please fill all of them", height=4, font=17, background='white').grid(row=self.row,
                                                                                                     column=0, sticky=W)
             return
@@ -134,8 +134,13 @@ class Gui :
         try:
             with self.connection2.cursor() as cursor:
                 # Read a single record
-                sql = "insert into Users VALUES (%s, %s , 0)"
-                cursor.execute(sql, (self.email , self.username))
+                pass
+                # sql = "insert into Users Values ( ' " + self.Email + "' , '" + self.firstName + " , " + self.lastName + " , 'account' )"
+                sql = "insert into Users Values (" + self.Email + " , " + self.firstName + " , " + self.lastName +  " , 'account' )"
+                cursor.execute(sql)
+                result = cursor.fetchone()
+                sql = "insert into Users VALUES (" + self.Email + ""
+                cursor.execute(sql)
                 result = cursor.fetchone()
                 self.connection2.commit()
 
@@ -164,10 +169,9 @@ class Gui :
         flag2 = False
         sql2 = ""
         for sql in text:
-            if sql.find("CREATE") != -1 or sql.find("insert") != -1 or sql.find("drop") != -1 or  sql.find("UPDATE") != -1 or  sql.find("create") != -1:
+            if sql.find("CREATE") != -1 or sql.find("insert") != -1 or sql.find("drop") != -1 or\
+                            sql.find("UPDATE") != -1 or sql.find("create") != -1 or sql.find("DELETE") != -1:
                 if flag2:
-                    print("---> " , sql )
-                    print("00000000000> " , sql2 )
                     sql3 = sql
                     sql = sql2
                     sql2 = sql3
@@ -178,6 +182,9 @@ class Gui :
             else:
                 sql2 = sql2 + sql
                 continue
+            print("=========================")
+            print(sql)
+            print("=========================")
             self.connection = pymysql.connect(host='localhost',
                                               user='root',
                                               password='Khalesuske76',
@@ -195,13 +202,28 @@ class Gui :
                 with self.connection.cursor() as cursor:
                     cursor.execute(sql)
                     result = cursor.fetchone()
-                    print(sql)
-            # except pymysql.err.ProgrammingError as err :
-            #     print("error : " , err.args)
-            #
+                    # print(sql)
             finally:
                 self.connection.commit()
                 self.connection.close()
+        self.connection = pymysql.connect(host='localhost',
+                                          user='root',
+                                          password='Khalesuske76',
+                                          db='onlineShopping',
+                                          charset='utf8mb4',
+                                          cursorclass=pymysql.cursors.DictCursor)
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(sql2)
+                result = cursor.fetchone()
+                print(sql2)
+        except pymysql.err.InternalError as e:
+            code, msg = e.args
+            if code == 1644:
+                print(msg)
+        finally:
+            self.connection.commit()
+            self.connection.close()
         f.close()
 
     def centerWindow(self):
@@ -301,6 +323,9 @@ class Gui :
         self.l8.grid_forget()
         self.l9.grid_forget()
         self.l10.grid_forget()
+        # self.l11.grid_forget()
+        # self.l15.grid_forget()
+
 
         self.b1.grid_forget()
         self.b2.grid_forget()
@@ -315,5 +340,6 @@ class Gui :
         self.e7.grid_forget()
         self.e8.grid_forget()
         self.e9.grid_forget()
+        self.e10.grid_forget()
 
 g = Gui()
