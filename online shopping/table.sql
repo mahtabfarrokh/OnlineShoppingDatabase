@@ -34,7 +34,7 @@ drop table if exists DeletedCompany;
 drop procedure if exists hesab;
 drop procedure if exists avgStar;
 create table Employee(IDU varchar(30) references UserAccount on update cascade,companyName text references Company,Pnumber int,Confirmation VARCHAR (10),CHECK (Confirmation in (’yes’, ’no’)) , PRIMARY KEY (IDU));
-create table UserAccount(IDU varchar(30) primary key on delete CASCADE ,Email text references Users,credit int DEFAULT 0 , uDATE date , password text );
+create table UserAccount(IDU varchar(30) primary key,Email text references Users,credit int DEFAULT 0 , uDATE date , password text );
 create table UserAccountPhone(UPhonenumber numeric (11,0),IDU varchar(30) references UserAccount on update cascade,PRIMARY KEY (UPhonenumber, IDU)  );
 create table UserAccountAddress(UAddress varchar(100),IDU varchar(30) references UserAccount on update cascade ,PRIMARY KEY (UAddress, IDU) );
 create table Users(Email varchar(30) primary key , UfirstName text,UlastName text , kind varchar (10) , check (kind in (’guest’, ’account’)));

@@ -133,13 +133,7 @@ class Gui :
                                            cursorclass=pymysql.cursors.DictCursor)
         try:
             with self.connection2.cursor() as cursor:
-                # Read a single record
-                pass
-                # sql = "insert into Users Values ( ' " + self.Email + "' , '" + self.firstName + " , " + self.lastName + " , 'account' )"
-                sql = "insert into Users Values (" + self.Email + " , " + self.firstName + " , " + self.lastName +  " , 'account' )"
-                cursor.execute(sql)
-                result = cursor.fetchone()
-                sql = "insert into Users VALUES (" + self.Email + ""
+                sql = "insert into Users Values ('" + self.Email + "' , '" + self.firstName + "' , '" + self.lastName +  "' , 'account' )"
                 cursor.execute(sql)
                 result = cursor.fetchone()
                 self.connection2.commit()
@@ -154,8 +148,8 @@ class Gui :
                 result = cursor.fetchone()
                 self.connection2.commit()
 
-                sql = "insert into UserAccount VALUES (%s , %s, %s , %s , 0 , %s , %s)"
-                cursor.execute(sql, (self.username, self.firstName , self.lastName , self.Email, self.date, self.password))
+                sql = "insert into UserAccount VALUES (%s , %s , 0 , %s , %s)"
+                cursor.execute(sql, (self.username, self.Email , self.date, self.password))
                 result = cursor.fetchone()
         finally:
             self.connection2.commit()
